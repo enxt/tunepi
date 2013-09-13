@@ -1,6 +1,11 @@
 #!/bin/sh
 
-tunepiuser=efadrados
+tunepiuser=myusername
+address=192.168.1.X
+gateway=192.168.1.1
+netmask=255.255.255.0
+broadcast=192.168.1.255
+network=192.168.1.0
 
 sudo su
 
@@ -55,25 +60,8 @@ adduser $tunepiuser
 
 sed -i 's/pi ALL/${tunepiuser} ALL/g' /etc/sudoers
 
-#visudo
-
-## Look for this section
-#pi ALL=(ALL) NOPASSWD: ALL
-#tunepiuser ALL=(ALL) NOPASSWD: ALL
-
 sudo userdel pi
 sudo groupdel pi
-#sudo visudo
-
-## Look for this section
-#pi ALL=(ALL) NOPASSWD: ALL
-## ^ Delete this line
-#tunepiuser ALL=(ALL) NOPASSWD: ALL
-
-#sudo vi /etc/ssh/sshd_config
-#PermitRootLogin yes ---> PermitRootLogin no
-
-#sudo service ssh restart
 
 
 cat <<EOF > /etc/iptables-rules
@@ -97,94 +85,79 @@ EOF
 iptables-restore < /etc/iptables-rules
 
 
+cp -f /etc/network/interfaces /etc/network/interfaces.dhcp-backup
 
 
+with:
+if [ ! $address -eq "" ; then
+cat <<EOF > /etc/network/interfaces
+iface eth0 inet static
+ #set your static IP below
+ address $address
 
-vi /etc/network/interfaces
+ #set your default gateway IP here
+ gateway $gateway
 
-# Remove any existing mention of eth0 and replace with:
-auto eth0
-iface eth0 inet dhcp
+ netmask $netmask
+ network $network
+ broadcast $broadcast
  pre-up /sbin/iptables-restore < /etc/iptables-rules
 
+EOF
+else
+ echo "pre-up /sbin/iptables-restore < /etc/iptables-rules" >> /etc/network/interfaces
+fi
 
-
-
- vi /boot/config.txt
-force_turbo=0
-arm_freq_min=100
-# You could allow it to scale up to 1000 here, but I don't.
-#arm_freq=1000
-
+echo "force_turbo=0" >> /boot/config.txt
+echo "arm_freq_min=100" >> /boot/config.txt
 
 apt-get install -y cpufrequtils
 cpufreq-set -g ondemand
 
 
-sudo apt-get -y update && sudo apt-get -y dist-upgrade && sudo apt-get -y autoremove && sudo apt-get -y autoclean
+apt-get install vim vim-nox screen unzip zip python-software-properties aptitude curl ntp ntpdate git-core wget ca-certificates binutils raspi-config -y
 
+apt-get -y install dropbear openssh-client
+/etc/init.d/ssh stop
+sed -i 's/NO_START=1/NO_START=0/g' /etc/default/dropbear
+#sed -i 's/DROPBEAR_EXTRA_ARGS=/DROPBEAR_EXTRA_ARGS="-w"/g' /etc/default/dropbear #prevent root logins
+#sed -i 's/DROPBEAR_EXTRA_ARGS=/DROPBEAR_EXTRA_ARGS="-s"/g' /etc/default/dropbear #prevent password logins
+#sed -i 's/DROPBEAR_EXTRA_ARGS=/DROPBEAR_EXTRA_ARGS="-g"/g' /etc/default/dropbear #prevent password logins for root
+sed -i 's/DROPBEAR_EXTRA_ARGS=/DROPBEAR_EXTRA_ARGS="-w -s"/g' /etc/default/dropbear #prevent root logins and prevent password logins
+sed -i 's/DROPBEAR_PORT=22/DROPBEAR_PORT=2222/g' /etc/default/dropbear
+/etc/init.d/dropbear start
+apt-get remove --purge openssh-server
+
+sed -i '/[2-6]:23:respawn:\/sbin\/getty 38400 tty[2-6]/s%^%#%g' /etc/inittab #tty2-tty6 will be disabled. We are keeping tty1 for console, unless you choose to disable it.
+sed -i '/T0:23:respawn:\/sbin\/getty -L ttyAMA0 115200 vt100/s%^%#%g' /etc/inittab #disable getty on the Raspberry Pi serial line
+
+
+dpkg-reconfigure dash
+
+echo "CONF_SWAPSIZE=512" > /etc/dphys-swapfile
+
+dphys-swapfile setup
+
+dphys-swapfile swapon
+
+sed -i 's/vm.swappiness=1/vm.swappiness=10/g'  /etc/sysctl.conf
+
+echo 'vm.vfs_cache_pressure=50' >> /etc/sysctl.conf
+
+sed -i 's/defaults,noatime/defaults,noatime,nodiratime/g' /etc/fstab #optimize mount
+
+echo "net.ipv6.conf.all.disable_ipv6=1" > /etc/sysctl.d/disableipv6.conf #disable ipv6
+
+echo 'blacklist ipv6' >> /etc/modprobe.d/blacklist
+
+sed -i '/::/s%^%#%g' /etc/hosts #Remove IPv6 hosts
+
+
+#sudo echo -e "force_turbo=0" >> /boot/config.txt
+
+sed -i 's/deadline/noop/g' /boot/cmdline.txt
+
+#upgrade firmware of raspi
+apt-get -y update && sudo apt-get -y dist-upgrade && sudo apt-get -y autoremove && sudo apt-get -y autoclean
 wget http://goo.gl/1BOfJ -O /usr/bin/rpi-update && sudo chmod +x /usr/bin/rpi-update
-
 rpi-update 240
-
-
-
-sudo apt-get install vim vim-nox screen unzip zip python-software-properties aptitude curl ntp ntpdate git-core wget ca-certificates binutils raspi-config -y
-
-sudo apt-get install dropbear openssh-client
-sudo /etc/init.d/ssh stop
-sudo sed -i 's/NO_START=1/NO_START=0/g' /etc/default/dropbear
-sudo sed -i 's/DROPBEAR_EXTRA_ARGS=/DROPBEAR_EXTRA_ARGS="-w"/g' /etc/default/dropbear #prevent root logins
-sudo sed -i 's/DROPBEAR_EXTRA_ARGS=/DROPBEAR_EXTRA_ARGS="-s"/g' /etc/default/dropbear #prevent password logins
-sudo sed -i 's/DROPBEAR_EXTRA_ARGS=/DROPBEAR_EXTRA_ARGS="-g"/g' /etc/default/dropbear #prevent password logins for root
-sudo sed -i 's/DROPBEAR_EXTRA_ARGS=/DROPBEAR_EXTRA_ARGS="-w -s"/g' /etc/default/dropbear #prevent root logins and prevent password logins
-sudo sed -i 's/DROPBEAR_PORT=22/DROPBEAR_PORT=2222/g' /etc/default/dropbear
-sudo /etc/init.d/dropbear start
-sudo apt-get purge openssh-server
-
-sudo sed -i '/[2-6]:23:respawn:\/sbin\/getty 38400 tty[2-6]/s%^%#%g' /etc/inittab #tty2-tty6 will be disabled. We are keeping tty1 for console, unless you choose to disable it.
-sudo sed -i '/T0:23:respawn:\/sbin\/getty -L ttyAMA0 115200 vt100/s%^%#%g' /etc/inittab #disable getty on the Raspberry Pi serial line
-
-
-sudo dpkg-reconfigure dash
-
-sudo echo "CONF_SWAPSIZE=512" > /etc/dphys-swapfile
-
-sudo dphys-swapfile setup
-
-sudo dphys-swapfile swapon
-
-sudo sed -i 's/vm.swappiness=1/vm.swappiness=10/g'  /etc/sysctl.conf
-
-sudo echo 'vm.vfs_cache_pressure=50' >> /etc/sysctl.conf
-
-sudo sed -i 's/defaults,noatime/defaults,noatime,nodiratime/g' /etc/fstab #optimize mount
-
-sudo echo "net.ipv6.conf.all.disable_ipv6=1" > /etc/sysctl.d/disableipv6.conf #disable ipv6
-
-sudo echo 'blacklist ipv6' >> /etc/modprobe.d/blacklist
-
-sudo sed -i '/::/s%^%#%g' /etc/hosts #Remove IPv6 hosts
-
-
-sudo echo -e "force_turbo=0" >> /boot/config.txt
-
-sudo sed -i 's/deadline/noop/g' /boot/cmdline.txt
-
-
-sudo cp -f /etc/network/interfaces /etc/network/interfaces.dhcp-backup
-
-replace:
-iface eth0 inet dhcp
-
-with:
-iface eth0 inet static
-#set your static IP below
-address 192.168.1.107
-
-#set your default gateway IP here
-gateway 192.168.1.1
-
-netmask 255.255.255.0
-network 192.168.1.0
-broadcast 192.168.1.255
