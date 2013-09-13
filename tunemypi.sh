@@ -1,3 +1,7 @@
+#!/bin/sh
+
+tunepiuser=efadrados
+
 sudo su
 
 dpkg-reconfigure tzdata
@@ -26,7 +30,7 @@ dd if=/dev/zero of=swap bs=1M count=100
 
 cd /var/log/
 rm `find . -type f`
-
+cd
 
 
 apt-get --purge remove aptitude aptitude-common binutils cifs-utils console-setup console-setup-linux cpp \
@@ -47,9 +51,11 @@ apt-get --purge autoremove && apt-get clean
 
 apt-get update && apt-get install vim && update-alternatives --set editor /usr/bin/vim.basic
 
-adduser tunepiuser
+adduser $tunepiuser
 
-visudo
+sed -i 's/pi ALL/${tunepiuser} ALL/g' /etc/sudoers
+
+#visudo
 
 ## Look for this section
 #pi ALL=(ALL) NOPASSWD: ALL
@@ -57,21 +63,20 @@ visudo
 
 sudo userdel pi
 sudo groupdel pi
-sudo visudo
+#sudo visudo
 
 ## Look for this section
 #pi ALL=(ALL) NOPASSWD: ALL
 ## ^ Delete this line
 #tunepiuser ALL=(ALL) NOPASSWD: ALL
 
-sudo vi /etc/ssh/sshd_config
-PermitRootLogin yes ---> PermitRootLogin no
+#sudo vi /etc/ssh/sshd_config
+#PermitRootLogin yes ---> PermitRootLogin no
 
-sudo service ssh restart
+#sudo service ssh restart
 
 
-vi /etc/iptables-rules
-
+cat <<EOF > /etc/iptables-rules
 *filter
 :INPUT ACCEPT [0:0]
 :FORWARD ACCEPT [0:0]
@@ -87,6 +92,7 @@ vi /etc/iptables-rules
 -A INPUT -p icmp --icmp-type 8 -j ACCEPT
 -A INPUT -j DROP 
 COMMIT
+EOF
 
 iptables-restore < /etc/iptables-rules
 
@@ -111,10 +117,8 @@ arm_freq_min=100
 #arm_freq=1000
 
 
-sudo apt-get install cpufrequtils
-
-
-sudo cpufreq-set -g ondemand
+apt-get install -y cpufrequtils
+cpufreq-set -g ondemand
 
 
 sudo apt-get -y update && sudo apt-get -y dist-upgrade && sudo apt-get -y autoremove && sudo apt-get -y autoclean
