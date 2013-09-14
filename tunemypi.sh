@@ -1,13 +1,16 @@
 #!/bin/sh
 
 tunepiuser=myusername
-address=192.168.1.X
+address=192.168.1.21
 gateway=192.168.1.1
 netmask=255.255.255.0
 broadcast=192.168.1.255
 network=192.168.1.0
 
-sudo su
+#upgrade firmware of raspi
+apt-get -y update && sudo apt-get -y dist-upgrade && sudo apt-get -y autoremove && sudo apt-get -y autoclean
+wget http://goo.gl/1BOfJ -O /usr/bin/rpi-update && sudo chmod +x /usr/bin/rpi-update
+rpi-update
 
 dpkg-reconfigure tzdata
 apt-get install console-data locales
@@ -58,7 +61,7 @@ apt-get update && apt-get install vim && update-alternatives --set editor /usr/b
 
 adduser $tunepiuser
 
-sed -i 's/pi ALL/${tunepiuser} ALL/g' /etc/sudoers
+sed -i "s/pi ALL/$tunepiuser ALL/g" /etc/sudoers
 
 sudo userdel pi
 sudo groupdel pi
@@ -87,9 +90,7 @@ iptables-restore < /etc/iptables-rules
 
 cp -f /etc/network/interfaces /etc/network/interfaces.dhcp-backup
 
-
-with:
-if [ ! $address -eq "" ; then
+if [ "$address" != "" ]; then
 cat <<EOF > /etc/network/interfaces
 iface eth0 inet static
  #set your static IP below
@@ -108,14 +109,18 @@ else
  echo "pre-up /sbin/iptables-restore < /etc/iptables-rules" >> /etc/network/interfaces
 fi
 
-echo "force_turbo=0" >> /boot/config.txt
-echo "arm_freq_min=100" >> /boot/config.txt
+exitstest=`cat /boot/config.txt | grep "force_turbo=0"`
+if [ $? -eq 1 ]; then
+  echo "force_turbo=0" >> /boot/config.txt
+  echo "arm_freq_min=100" >> /boot/config.txt
+fi
 
 apt-get install -y cpufrequtils
 cpufreq-set -g ondemand
 
 
-apt-get install vim vim-nox screen unzip zip python-software-properties aptitude curl ntp ntpdate git-core wget ca-certificates binutils raspi-config -y
+apt-get -y install vim vim-nox 
+#screen unzip zip python-software-properties curl ntp ntpdate git-core wget ca-certificates binutils -y
 
 apt-get -y install dropbear openssh-client
 /etc/init.d/ssh stop
@@ -146,18 +151,10 @@ echo 'vm.vfs_cache_pressure=50' >> /etc/sysctl.conf
 
 sed -i 's/defaults,noatime/defaults,noatime,nodiratime/g' /etc/fstab #optimize mount
 
+# disable ipv6
 echo "net.ipv6.conf.all.disable_ipv6=1" > /etc/sysctl.d/disableipv6.conf #disable ipv6
-
 echo 'blacklist ipv6' >> /etc/modprobe.d/blacklist
-
 sed -i '/::/s%^%#%g' /etc/hosts #Remove IPv6 hosts
-
-
-#sudo echo -e "force_turbo=0" >> /boot/config.txt
 
 sed -i 's/deadline/noop/g' /boot/cmdline.txt
 
-#upgrade firmware of raspi
-apt-get -y update && sudo apt-get -y dist-upgrade && sudo apt-get -y autoremove && sudo apt-get -y autoclean
-wget http://goo.gl/1BOfJ -O /usr/bin/rpi-update && sudo chmod +x /usr/bin/rpi-update
-rpi-update 240
