@@ -6,6 +6,12 @@ gateway=192.168.1.1
 netmask=255.255.255.0
 broadcast=192.168.1.255
 network=192.168.1.0
+sshport=2222
+
+
+#This should create input in boot script to execute again without
+#bellow line
+sudo raspi-config --expand-rootf
 
 #upgrade firmware of raspi
 apt-get -y update && sudo apt-get -y dist-upgrade && sudo apt-get -y autoremove && sudo apt-get -y autoclean
@@ -129,7 +135,7 @@ sed -i 's/NO_START=1/NO_START=0/g' /etc/default/dropbear
 #sed -i 's/DROPBEAR_EXTRA_ARGS=/DROPBEAR_EXTRA_ARGS="-s"/g' /etc/default/dropbear #prevent password logins
 #sed -i 's/DROPBEAR_EXTRA_ARGS=/DROPBEAR_EXTRA_ARGS="-g"/g' /etc/default/dropbear #prevent password logins for root
 sed -i 's/DROPBEAR_EXTRA_ARGS=/DROPBEAR_EXTRA_ARGS="-w -s"/g' /etc/default/dropbear #prevent root logins and prevent password logins
-sed -i 's/DROPBEAR_PORT=22/DROPBEAR_PORT=2222/g' /etc/default/dropbear
+sed -i 's/DROPBEAR_PORT=22/DROPBEAR_PORT=$sshport/g' /etc/default/dropbear
 /etc/init.d/dropbear start
 apt-get remove --purge openssh-server
 
@@ -140,11 +146,8 @@ sed -i '/T0:23:respawn:\/sbin\/getty -L ttyAMA0 115200 vt100/s%^%#%g' /etc/initt
 dpkg-reconfigure dash
 
 echo "CONF_SWAPSIZE=512" > /etc/dphys-swapfile
-
 dphys-swapfile setup
-
 dphys-swapfile swapon
-
 sed -i 's/vm.swappiness=1/vm.swappiness=10/g'  /etc/sysctl.conf
 
 echo 'vm.vfs_cache_pressure=50' >> /etc/sysctl.conf
