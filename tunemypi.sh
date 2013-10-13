@@ -12,7 +12,7 @@ network=192.168.1.0
 sshport=2222
 
 
-apt-get update ssh
+apt-get update
 
 dpkg-reconfigure tzdata
 dpkg-reconfigure console-data
@@ -149,7 +149,7 @@ server {
 }
 EOF
 
-mkdir -p /usr/share/nginx/www./dev.mysite.com
+mkdir -p /usr/share/nginx/www/dev.mysite.com
 
 
 
