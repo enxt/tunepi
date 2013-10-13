@@ -1,6 +1,9 @@
 #!/bin/sh
 
-tunepiuser=myusername
+# Download and write this image to your sd card
+# http://files2.linuxsystems.it/raspbian_wheezy_20130923.img.7z
+# don't forget resize swap and root partitions before boot from pi, moving first swap to last of disk.
+
 address=192.168.1.21
 gateway=192.168.1.1
 netmask=255.255.255.0
@@ -9,69 +12,11 @@ network=192.168.1.0
 sshport=2222
 
 
-#This should create input in boot script to execute again without
-#bellow line
-sudo raspi-config --expand-rootf
-
-#upgrade firmware of raspi
-apt-get -y update && sudo apt-get -y dist-upgrade && sudo apt-get -y autoremove && sudo apt-get -y autoclean
-wget http://goo.gl/1BOfJ -O /usr/bin/rpi-update && sudo chmod +x /usr/bin/rpi-update
-rpi-update
+apt-get update ssh
 
 dpkg-reconfigure tzdata
-apt-get install console-data locales
 dpkg-reconfigure console-data
 dpkg-reconfigure locales
-
-
-rm -rf /home/pi/python_games
-
-apt-get --purge remove midori omxplayer raspi-config
-apt-get --purge remove `dpkg --get-selections | grep "\-dev" | sed s/install//`
-#apt-get --purge remove `dpkg --get-selections | grep "libdev" | sed s/install//`
-apt-get --purge remove `dpkg --get-selections | grep -v "deinstall" | grep python | sed s/install//`
-apt-get --purge remove `dpkg --get-selections | grep -v "deinstall" | grep x11 | sed s/install//`
-apt-get --purge remove `dpkg --get-selections | grep -v "deinstall" | grep gtk | sed s/install//`
-apt-get --purge remove `dpkg --get-selections | grep -v "deinstall" | grep lxde | sed s/install//`
-apt-get --purge remove `dpkg --get-selections | grep -v "deinstall" | grep sound | sed s/install//`
-
-#apt-get --purge remove `dpkg --get-selections | grep -v "deinstall" | grep ssh | sed s/install//`
-#apt-get install dropbear
-
-swapoff -a
-cd /var
-dd if=/dev/zero of=swap bs=1M count=100
-
-cd /var/log/
-rm `find . -type f`
-cd
-
-
-apt-get --purge remove aptitude aptitude-common binutils cifs-utils console-setup console-setup-linux cpp \
-cpp-4.6 curl dbus debian-reference-common debian-reference-en desktop-file-utils git \
-git-core info libboost-iostreams1.46.1 libboost-iostreams1.48.0 libboost-iostreams1.49.0 \
-libboost-iostreams1.50.0 libcurl3 libcurl3-gnutls libcwidget3 libdbus-1-3 libept1.4.12 \
-libexpat1 libffi5 libglib2.0-0 libgmp10 libiw30 libldap-2.4-2 libmpc2 libmpfr4 \
-libnih-dbus1 libnl-3-200 libnl-genl-3-200 libpci3 libpcsclite1 libpng12-0 librtmp0 \
-libsasl2-2 libsasl2-modules libsqlite3-0 libssh2-1 libsystemd-login0 libtalloc2 \
-libwbclient0 libxapian22 libxml2 lua5.1 luajit lxde-icon-theme man-db menu-xdg \
-mountall pciutils penguinspuzzle pkg-config pypy-upstream rpi-update sgml-base \
-shared-mime-info smbclient strace tasksel tasksel-data wireless-tools wpasupplicant \
-xdg-utils xml-core gettext-base git-man libasprintf0c2 liberror-perl libglib2.0-data \
-libluajit-5.1-common libtdb1 menu patch rsync samba-common ucf libreadline5 xkb-data
-
-apt-get --purge autoremove && apt-get clean
-
-
-apt-get update && apt-get install vim && update-alternatives --set editor /usr/bin/vim.basic
-
-adduser $tunepiuser
-
-sed -i "s/pi ALL/$tunepiuser ALL/g" /etc/sudoers
-
-sudo userdel pi
-sudo groupdel pi
-
 
 cat <<EOF > /etc/iptables-rules
 *filter
@@ -145,11 +90,6 @@ sed -i '/T0:23:respawn:\/sbin\/getty -L ttyAMA0 115200 vt100/s%^%#%g' /etc/initt
 
 dpkg-reconfigure dash
 
-echo "CONF_SWAPSIZE=512" > /etc/dphys-swapfile
-dphys-swapfile setup
-dphys-swapfile swapon
-sed -i 's/vm.swappiness=1/vm.swappiness=10/g'  /etc/sysctl.conf
-
 echo 'vm.vfs_cache_pressure=50' >> /etc/sysctl.conf
 
 sed -i 's/defaults,noatime/defaults,noatime,nodiratime/g' /etc/fstab #optimize mount
@@ -160,4 +100,58 @@ echo 'blacklist ipv6' >> /etc/modprobe.d/blacklist
 sed -i '/::/s%^%#%g' /etc/hosts #Remove IPv6 hosts
 
 sed -i 's/deadline/noop/g' /boot/cmdline.txt
+
+apt-get -y install nginx
+apt-get -y install php5 php5-cgi php5-sqlite php5-common php5-cli php5-fpm php5-gd sqlite3 php5-curl
+
+apt-get -y install php5-dev php5-mysql gcc make
+apt-get -y install git mercurial
+git clone git://github.com/phalcon/cphalcon.git
+cd cphalcon/build/
+./install
+
+
+cat <<EOF > /etc/nginx/sites-enabled/dev.mysite.com
+server {
+
+    listen   80;
+    server_name dev.mysite.com;
+
+    index index.php index.html index.htm;
+    set $root_path '/usr/share/nginx/www/dev.mysite.com';
+    root $root_path;
+
+    #try_files $uri $uri/ @rewrite;
+
+    #location @rewrite {
+    #    rewrite ^/(.*)$ /index.php?_url=/$1;
+    #}
+
+    location ~ \.php {
+        fastcgi_pass unix:/var/run/php5-fpm.sock;
+        fastcgi_index /index.php;
+
+        include /etc/nginx/fastcgi_params;
+
+        fastcgi_split_path_info       ^(.+\.php)(/.+)$;
+        fastcgi_param PATH_INFO       $fastcgi_path_info;
+        fastcgi_param PATH_TRANSLATED $document_root$fastcgi_path_info;
+        fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
+    }
+
+    location ~* ^/(css|img|js|flv|swf|download)/(.+)$ {
+        root $root_path;
+    }
+
+    location ~ /\.ht {
+        deny all;
+    }
+}
+EOF
+
+mkdir -p /usr/share/nginx/www./dev.mysite.com
+
+
+
+
 
