@@ -37,6 +37,8 @@ sudo apt-get clean
 sudo rm -rf /etc/wpa_supplicant
 sudo rm -rf /etc/X11
 sudo rm -rf ~/python_games
+sudo rm -rf ~/Desktop
+sudo rm -f ~/ocr_pi.png
 sudo rm -rf /opt
  
 sudo swapoff -a
