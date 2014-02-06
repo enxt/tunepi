@@ -20,7 +20,8 @@ ca-certificates libraspberrypi-doc xkb-data fonts-freefont-ttf locales manpages 
 gcc-4.4-base:armhf gcc-4.5-base:armhf gcc-4.6-base:armhf
 
 ## Comment above line if you want wireless connections.
-sudo apt-get -y remove --purge libiw30 wpasupplicant wireless-tools
+sudo apt-get -y remove --purge libiw30 wpasupplicant wireless-tools \
+firmware-atheros firmware-brcm80211 firmware-libertas firmware-ralink firmware-realtek
 
 ## Comment above line if you want samba
 sudo apt-get -y remove --purge cifs-utils samba-common smbclient nfs-common
