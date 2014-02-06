@@ -8,23 +8,33 @@ sudo apt-get -y install console-data locales
 sudo dpkg-reconfigure console-data
 sudo dpkg-reconfigure locales
  
-sudo apt-get -y remove --purge `sudo dpkg --get-selections | grep "\-dev\|python\|x11\|sound\|midori\|lxde\|omxplayer\|raspi\-config" | sed s/install//`
+sudo apt-get -y remove --purge `sudo dpkg --get-selections | grep "\-dev\|python\|x11\|sound\|midori\|lxde\|omxplayer\|raspi\-config\|v4l" | sed s/install//`
 sudo apt-get -y remove `sudo dpkg --get-selections | grep -v "deinstall" | grep ssh | sed s/install//`
 sudo apt-get -y install dropbear
- 
-sudo apt-get -y remove gcc-4.4-base:armhf gcc-4.5-base:armhf gcc-4.6-base:armhf
-sudo apt-get -y remove ca-certificates libraspberrypi-doc xkb-data fonts-freefont-ttf locales manpages
- 
-sudo apt-get -y remove --purge xserver-xorg xserver-xorg-core xfonts-utils xarchiver x11-utils x11-common wpagui
+
+
+## Various removes
+sudo apt-get -y remove --purge gnome-themes-standard-data liblapack3 libatlas3-base penguinspuzzle \
+gdb menu menu-xdg xdg-utils desktop-file-utils raspberrypi-artwork java-common \
+ca-certificates libraspberrypi-doc xkb-data fonts-freefont-ttf locales manpages \
+gcc-4.4-base:armhf gcc-4.5-base:armhf gcc-4.6-base:armhf
+
+## Comment above line if you want wireless connections.
+sudo apt-get -y remove --purge libiw30 wpasupplicant wireless-tools
+
+## Comment above line if you want samba
 sudo apt-get -y remove --purge cifs-utils samba-common smbclient nfs-common
-sudo apt-get -y remove --purge liblapack3 libatlas3-base penguinspuzzle gdb menu menu-xdg xdg-utils desktop-file-utils raspberrypi-artwork
-sudo apt-get -y remove --purge libiw30 wpa-supplicant wireless-tools
-sudo apt-get -y remove --purge parted dpkg-dev
- 
+
+## Comment above if you work in console (i´m work through ssh)
+sudo apt-get -y remove --purge locales
+
+
 sudo apt-get -y autoremove
  
 sudo apt-get clean
 
+sudo rm -rf /etc/wpa_supplicant
+sudo rm -rf /etc/X11
 sudo rm -rf ~/python_games
 sudo rm -rf /opt
  
