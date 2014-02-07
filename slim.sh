@@ -44,7 +44,15 @@ sudo rm -rf /opt
 sudo swapoff -a
 cd /var
 sudo dd if=/dev/zero of=swap bs=1M count=100
-mkswap /var/swap
+sudo mkswap /var/swap
+
+
+## Comment above if you don´t want install nginx + php
+sudo apt-get -y install php5 php5-cli php5-common php5-curl php5-fpm php5-gd nginx
+
+## Comment above if you don´t want mercurial
+sudo apt-get -y install mercurial
+
  
 cd /var/log/
 sudo rm `find . -type f`
@@ -54,6 +62,8 @@ sudo rm `find . -type f`
 #Read more: http://www.cnx-software.com/2012/07/31/84-mb-minimal-raspbian-armhf-image-for-raspberry-pi/#ixzz2sI9E8exY
  
 #sudo shutdown now
+#extract sd from raspberyy pi plug in your pc and ...
+
 #sudo dd if=/dev/sdb of=image_name.img count=3788800
 #mkdir mnt
 #sudo mount -o loop,offset=$((512*122880)) image_name.img mnt
